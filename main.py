@@ -5,19 +5,19 @@ def generate_hash(psw):
  # UTF-8 encoding converts the string characters into binary byte formatting.
     byte_psw = psw.encode('utf-8')
     # Cryptographic Salt: Generates a random sequence of characters.
-    # This ensures two users with identical passwords (e.g.'Password123')
+    # This ensures two users with identical passwords (e.g.'Password123$)
     # will generate completely distinct hashes, successfully mitigating Rainbow Table attacks.
     salt = bcrypt.gensalt()
     # Hashing Process: Combines the byte-string password and the unique salt.
     hash= bcrypt.hashpw(byte_psw, salt)
     return hash.decode('utf-8')
 
-# validating hash vs pwd
-psw = "HelloWorld123"
 
 def is_valid_hash(psw, hash):
-    # Format Conversion: Converts the stored plaintext database string hash 
-    # back into its original binary byte format so it can be parsed by bcrypt.
+    """
+    Format Conversion: Converts the stored plaintext database string hash 
+    back into its original binary byte format so it can be parsed by bcrypt.
+    """
     hash = hash.encode('utf-8')
     byte_psw = psw.encode('utf-8')
     is_valid = bcrypt.checkpw(byte_psw, hash)
@@ -27,16 +27,36 @@ def is_valid_hash(psw, hash):
 import re
 def is_strong_password(password):
     """Checks if the password meets security requirements."""
-    if len(password) < 8:
-        return False, "Password must be at least 8 characters long."
+    if len(password) < 12:
+        return False, "Password must be at least 12 characters long."
     if not re.search(r"[A-Z]", password):
         return False, "Password must contain at least one uppercase letter."
     if not re.search(r"\d", password):
         return False, "Password must contain at least one number."
     return True, "Strong password."
 
+def is_valid_username(username):
+    """Validates that the username is clean and not purely numeric."""
+    # Strip whitespace to see if anything is actually written
+    username = username.strip()
+    
+    if len(username) < 3:
+        return False, "Username must be at least 3 characters long."
+        
+    # Check if the username consists entirely of numbers
+    if username.isdigit():
+        return False, "Username cannot contain only numbers. It must include letters."
+        
+    return True, "Valid username."
+
 def register_user():
     name = input('Enter your name: > ')
+   
+    is_name_valid, name_message = is_valid_username(name)
+    if not is_name_valid:
+        print(f"Registration Failed: {name_message}")
+        return
+   
     password = input('Enter your password: > ')
 
     is_valid, message = is_strong_password(password)
@@ -44,10 +64,9 @@ def register_user():
         print(f"Registration Failed: {message}")
         return
 
-    # Hashing Layer: Never record passwords in plaintext format.
-    # Passes credentials into the bcrypt function to secure data before it hits disk storage.
+
     hash_password = generate_hash(password)
-    with open('users.txt', 'a') as f:
+    with open('CW2_demo/DATA/DATA/users.txt', 'a') as f:
         f.write(f'{name},{hash_password}\n')
     print('User successfully registered!')
 
@@ -59,8 +78,7 @@ def login_user():
     # Wrapping with try-except avoids an application crash.
     try:
         
-        with open('users.txt', 'r') as f:
-            # Data Parsing: readlines() imports all file rows into an indexable Python list.
+        with open('CW2_demo/DATA/DATA/users.txt', 'r') as f:
             users = f.readlines()
     except FileNotFoundError:
         print("Database system is empty. Please register an account first.")
@@ -72,10 +90,8 @@ def login_user():
         # .split(',') breaks the comma-separated row string into discrete index components.
         user_name, user_hash = user.strip().split(',')
         
-        # Identity Validation: Compares target usernames and executes cryptographically 
-        # safe password hash verification. If both match, the user is granted access.
         if name == user_name and is_valid_hash(password, user_hash):
-            return True  # Authorization Granted immediately upon a match.        
+            return True         
     return False
 
 def main():
@@ -85,10 +101,14 @@ def main():
         if choice == '1':
             register_user()
         elif choice == '2':
-            print('Login successful!' if login_user() else 
-'Incorrect login.')
+              if login_user():
+               print('Login successful!' )
+              else :
+               print('Incorrect login.')
         elif choice == '3':
-            print('Goodbye!'); break
-if __name__ == '__ main__':
-    main()
+            print('Goodbye!');break
+        
     
+
+if __name__ == '__main__': 
+     main()
