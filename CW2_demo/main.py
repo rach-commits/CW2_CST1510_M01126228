@@ -1,5 +1,6 @@
 import bcrypt
 import sqlite3
+import pandas as pd
 
 # hashed using bcrypt
 def generate_hash(psw):
@@ -8,7 +9,7 @@ def generate_hash(psw):
     # Cryptographic Salt: Generates a random sequence of characters.
     # This ensures two users with identical passwords (e.g.'Password123$)
     # will generate completely distinct hashes, successfully mitigating Rainbow Table attacks.
-    salt = bcrypt.gensalt()
+    salt = bcrypt.gensalt(rounds=12)
     # Hashing Process: Combines the byte-string password and the unique salt.
     hash= bcrypt.hashpw(byte_psw, salt)
     return hash.decode('utf-8')
@@ -28,8 +29,8 @@ def is_valid_hash(psw, hash):
 import re
 def is_strong_password(password):
     """Checks if the password meets security requirements."""
-    if len(password) < 12:
-        return False, "Password must be at least 12 characters long."
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters long."
     if not re.search(r"[A-Z]", password):
         return False, "Password must contain at least one uppercase letter."
     if not re.search(r"\d", password):
@@ -52,6 +53,7 @@ def is_valid_username(username):
 
 def register_user():
     name = input('Enter your name: > ')
+    
    
     is_name_valid, name_message = is_valid_username(name)
     if not is_name_valid:
@@ -59,6 +61,7 @@ def register_user():
         return
    
     password = input('Enter your password: > ')
+    
 
     is_valid, message = is_strong_password(password)
     if not is_valid:
@@ -108,29 +111,36 @@ def main():
         elif choice == '3':
             print('Goodbye!');break
         
+ 
+ 
+       
+       
 def create_user_table():
     cur = conn.cursor()
     sql= '''CREATE TABLE users (
     id  INTEGER PRIMARY KEY AUTOINCREMENT,
     username      TEXT    NOT NULL UNIQUE,
-    password_hash TEXT    NOT NULL);'''
+    password_hash TEXT    NOT NULL,
+    role          TEXT DEFAULT 'user');'''
     cur.execute(sql)
-    conn.commit() 
+    conn.commit()
 
-def add_user(conn, name, hash):
+def add_user(conn, name, hash, role):
     cur = conn.cursor()
-    sql= '''INSERT INTO users (username,password_hash) VALUES(?, ?)'''
-    param = (name , hash)
+    sql= '''INSERT INTO users (username,password_hash,role) VALUES(?, ?, ?)'''
+    param = (name,hash,role)
     cur.execute(sql, param)
     conn.commit()
+
+
 
 def migrate_users(conn):
     with open('CW2_demo/DATA/users.txt', 'r') as f:
         users = f.readlines()
 
     for user in users:
-        name, hash = user.strip().split(',')
-        add_user(conn, name, hash)
+        name, hash, role = user.strip().split(',')
+        add_user(conn, name, hash, role)
 
 def get_all_users(conn):
     cur = conn.cursor()
@@ -142,6 +152,7 @@ def get_all_users(conn):
 
 
 def get_user(conn, name):
+    cur = conn.cursor()
     sql = '''SELECT * FROM users WHERE username = ?'''
     param = (name)
     cur.execute(sql,param)
@@ -150,8 +161,57 @@ def get_user(conn, name):
     return(user)
 
 
-#read just one user based on name
-conn = sqlite3.connect('CW2_demo/DATA/project_data.db')
-cur = conn.cursor()
+# Update just one user based on name
+def update_user(conn, old_name, new_name):
+    cur = conn.cursor()
+    sql ='UPDATE users SET username = ? WHERE username = ?'
+    param = (new_name, old_name)
+    cur.execute(sql, param)
+    conn.commit()
+
+def delete_user(conn, user_name):
+    cur = conn.cursor()
+    sql='DELETE FROM users WHERE username = ?'
+    param=(user_name)
+    cur.execute(sql, param)
+    conn.commit()
+
+def migrate_cyber_incidents(conn):
+    data = pd.read_csv('CW2_demo/DATA/cyber_incidents.csv')
+    data.to_sql('cyber_incidents', conn)
+    conn.close()
+
+def migrate_datasets_metadata(conn):
+    data = pd.read_csv('CW2_demo/DATA/datasets_metadata.csv')
+    data.to_sql('datasets_metadata', conn)
+    conn.close()
+
+def migrate_it_tickets(conn):
+    data = pd.read_csv('CW2_demo/DATA/it_tickets.csv')
+    data.to_sql('it_tickets', conn)
+    conn.close()
+
+def get_all_cyber_incidents(conn):
+    sql = 'SELECT * FROM cyber_incidents'
+    data = pd.read_sql(sql, conn)
+    conn.close()
+    return(data)
+
+def get_all_datasets_metadata(conn):
+    sql = 'SELECT * FROM datasets_metadata'
+    data = pd.read_sql(sql, conn)
+    conn.close()
+    return(data)
+
+
+def get_all_it_tickets(conn):
+    sql = 'SELECT * FROM it_tickets'
+    data = pd.read_sql(sql, conn)
+    conn.close()
+    return(data)
+
+conn = sqlite3.connect('CW2_demo/DATA/project_data.db') 
+print(get_all_it_tickets(conn))
+
 
 
