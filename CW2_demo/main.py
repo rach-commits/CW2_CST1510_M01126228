@@ -1,6 +1,10 @@
 import bcrypt
 import sqlite3
 import pandas as pd
+import re
+
+from app_model.db import conn
+from app_model.users import add_user, get_user
 
 # hashed using bcrypt
 def generate_hash(psw):
@@ -26,7 +30,7 @@ def is_valid_hash(psw, hash):
     return is_valid
 
 # user registration
-import re
+
 def is_strong_password(password):
     """Checks if the password meets security requirements."""
     if len(password) < 8:
@@ -51,167 +55,91 @@ def is_valid_username(username):
         
     return True, "Valid username."
 
-def register_user():
-    name = input('Enter your name: > ')
+def register_user(conn):
+    name = input('Enter your name: > ').strip()
     
    
     is_name_valid, name_message = is_valid_username(name)
     if not is_name_valid:
         print(f"Registration Failed: {name_message}")
-        return
+        return False
    
     password = input('Enter your password: > ')
     
+    role = input('Enter your role: ')
 
     is_valid, message = is_strong_password(password)
     if not is_valid:
         print(f"Registration Failed: {message}")
-        return
+        return False
 
     hash_password = generate_hash(password)
-    with open('CW2_demo/DATA/DATA/users.txt', 'a') as f:
-        f.write(f'{name},{hash_password}\n')
-    print('User successfully registered!')
+    add_user(conn,name,hash_password,role)
+    return True
 
-def login_user():
-    name = input('Enter your name: > ')
+# user log in
+def login_user(conn):
+    name = input('Enter your name: > ').strip()
     password = input('Enter your password: > ')
-    
-    # Exception Handling Safeguard: If no users have registered yet, the file won't exist.
-    # Wrapping with try-except avoids an application crash.
-    try:
-        
-        with open('CW2_demo/DATA/DATA/users.txt', 'r') as f:
-            users = f.readlines()
-    except FileNotFoundError:
-        print("Database system is empty. Please register an account first.")
+
+    #Check if user exists 
+    user_data = get_user(conn,name)
+    if not user_data:
         return False
-    
-    # Validation Loop: Linear scanning search across all registered records.
-    for user in users:
-        # Formatting Cleanup: .strip() eliminates hidden trailing whitespace and newline symbols (\n).
-        # .split(',') breaks the comma-separated row string into discrete index components.
-        user_name, user_hash = user.strip().split(',')
-        
-        if name == user_name and is_valid_hash(password, user_hash):
-            return True         
+
+    id, username,hash, role = user_data
+
+      
+    if name == username and is_valid_hash(password,hash):
+        print(f'Welcome back {username}!')
+        return True         
     return False
 
 def main():
     while True:
+        print('\nWelcome to the system!')
+        print('Choose from the following options:')
         print('1. To Register\n2. To Log in\n3. To Exit')
+
         choice = input(': > ')
+
         if choice == '1':
-            register_user()
+             if  register_user(conn):
+              print('Registration successful!')
         elif choice == '2':
-              if login_user():
+            if login_user(conn):
                print('Login successful!' )
-              else :
-               print('Incorrect login.')
+            else :
+               print('Incorrect login details.')
         elif choice == '3':
             print('Goodbye!');break
         
  
- 
+if __name__ == '__main__':
+    main()
        
        
-def create_user_table():
-    cur = conn.cursor()
-    sql= '''CREATE TABLE users (
-    id  INTEGER PRIMARY KEY AUTOINCREMENT,
-    username      TEXT    NOT NULL UNIQUE,
-    password_hash TEXT    NOT NULL,
-    role          TEXT DEFAULT 'user');'''
-    cur.execute(sql)
-    conn.commit()
-
-def add_user(conn, name, hash, role):
-    cur = conn.cursor()
-    sql= '''INSERT INTO users (username,password_hash,role) VALUES(?, ?, ?)'''
-    param = (name,hash,role)
-    cur.execute(sql, param)
-    conn.commit()
 
 
 
-def migrate_users(conn):
-    with open('CW2_demo/DATA/users.txt', 'r') as f:
-        users = f.readlines()
-
-    for user in users:
-        name, hash, role = user.strip().split(',')
-        add_user(conn, name, hash, role)
-
-def get_all_users(conn):
-    cur = conn.cursor()
-    sql = ''''SELECT * FROM users'''
-    cur.execute(sql)
-    users = cur.fetchall()
-    conn.close()
-    return users
 
 
-def get_user(conn, name):
-    cur = conn.cursor()
-    sql = '''SELECT * FROM users WHERE username = ?'''
-    param = (name)
-    cur.execute(sql,param)
-    user = cur.fetchone()
-    conn.close()
-    return(user)
 
 
-# Update just one user based on name
-def update_user(conn, old_name, new_name):
-    cur = conn.cursor()
-    sql ='UPDATE users SET username = ? WHERE username = ?'
-    param = (new_name, old_name)
-    cur.execute(sql, param)
-    conn.commit()
-
-def delete_user(conn, user_name):
-    cur = conn.cursor()
-    sql='DELETE FROM users WHERE username = ?'
-    param=(user_name)
-    cur.execute(sql, param)
-    conn.commit()
-
-def migrate_cyber_incidents(conn):
-    data = pd.read_csv('CW2_demo/DATA/cyber_incidents.csv')
-    data.to_sql('cyber_incidents', conn)
-    conn.close()
-
-def migrate_datasets_metadata(conn):
-    data = pd.read_csv('CW2_demo/DATA/datasets_metadata.csv')
-    data.to_sql('datasets_metadata', conn)
-    conn.close()
-
-def migrate_it_tickets(conn):
-    data = pd.read_csv('CW2_demo/DATA/it_tickets.csv')
-    data.to_sql('it_tickets', conn)
-    conn.close()
-
-def get_all_cyber_incidents(conn):
-    sql = 'SELECT * FROM cyber_incidents'
-    data = pd.read_sql(sql, conn)
-    conn.close()
-    return(data)
-
-def get_all_datasets_metadata(conn):
-    sql = 'SELECT * FROM datasets_metadata'
-    data = pd.read_sql(sql, conn)
-    conn.close()
-    return(data)
 
 
-def get_all_it_tickets(conn):
-    sql = 'SELECT * FROM it_tickets'
-    data = pd.read_sql(sql, conn)
-    conn.close()
-    return(data)
 
-conn = sqlite3.connect('CW2_demo/DATA/project_data.db') 
-print(get_all_it_tickets(conn))
+
+
+
+
+
+
+
+
+
+
+
 
 
 
