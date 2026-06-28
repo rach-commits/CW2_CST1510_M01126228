@@ -1,3 +1,5 @@
+import pandas as pd
+
 def migrate_datasets_metadata(conn):
     data = pd.read_csv('CW2_demo/DATA/datasets_metadata.csv')
     data.to_sql('datasets_metadata', conn)

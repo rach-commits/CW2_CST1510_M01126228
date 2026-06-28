@@ -1,2 +1,7 @@
 import sqlite3
-conn = sqlite3.connect('CW2_demo/DATA/project_data.db') 
+
+def get_connection():
+    return sqlite3.connect(
+        "DATA/project_data.db",
+        check_same_thread=False
+    )
