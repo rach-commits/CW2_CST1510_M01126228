@@ -7,4 +7,14 @@ st.set_page_config(
 
 
 
-st.title('Welcome to main page🏠')
+st.title('Welcome to the main page🏠')
+
+if 'logged_in' not in  st.session_state:
+    st.session_state['logged_in'] = False
+
+if st.button("Log In"):
+    st.session_state['logged_in'] = True
+
+
+if st.session_state
+st.session_state

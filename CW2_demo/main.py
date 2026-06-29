@@ -30,7 +30,6 @@ def is_valid_hash(psw, hash):
     return is_valid
 
 # user registration
-
 def is_strong_password(password):
     """Checks if the password meets security requirements."""
     if len(password) < 8:
@@ -39,6 +38,8 @@ def is_strong_password(password):
         return False, "Password must contain at least one uppercase letter."
     if not re.search(r"\d", password):
         return False, "Password must contain at least one number."
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+        return False, "Password must contain at least one special character."
     return True, "Strong password."
 
 def is_valid_username(username):
